@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC Video Chat</title>
+    <style>
+      :root {
+        --bg-color: #0f172a;
+        --surface-color: #1e293b;
+        --primary-color: #3b82f6;
+        --primary-hover: #2563eb;
+        --danger-color: #ef4444;
+        --danger-hover: #dc2626;
+        --text-color: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border-radius: 12px;
+      }
+
+      body {
+        font-family: "Segoe UI", -apple-system, system-ui, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: linear-gradient(135deg, var(--bg-color), #1e293b);
+        color: var(--text-color);
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 30px;
+        color: var(--text-color);
+        text-align: center;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .video-container {
+        display: flex;
+        gap: 30px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        max-width: 1200px;
+      }
+
+      .video-wrapper {
+        background-color: var(--surface-color);
+        padding: 20px;
+        border-radius: var(--border-radius);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        position: relative;
+        width: 480px;
+        transition: transform 0.3s ease;
+      }
+
+      .video-wrapper:hover {
+        transform: translateY(-5px);
+      }
+
+      video {
+        width: 100%;
+        height: 360px;
+        background-color: #000;
+        border-radius: calc(var(--border-radius) - 4px);
+        object-fit: cover;
+      }
+
+      .video-title {
+        position: absolute;
+        top: 15px;
+        left: 20px;
+        margin: 0;
+        color: var(--text-color);
+        font-size: 1.1rem;
+        font-weight: 500;
+        z-index: 10;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        background: rgba(0, 0, 0, 0.5);
+        padding: 8px 16px;
+        border-radius: 20px;
+      }
+
+      .video-controls {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 12px;
+        background: rgba(15, 23, 42, 0.85);
+        padding: 10px;
+        border-radius: 50px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+      }
+
+      .control-button {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        background-color: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        font-size: 20px;
+      }
+
+      .control-button:hover {
+        background-color: var(--primary-hover);
+        transform: scale(1.05);
+      }
+
+      .control-button.off {
+        background-color: var(--danger-color);
+      }
+
+      .control-button.off:hover {
+        background-color: var(--danger-hover);
+      }
+
+      .join-controls {
+        margin-bottom: 30px;
+        display: flex;
+        gap: 15px;
+        width: 100%;
+        max-width: 400px;
+        background: var(--surface-color);
+        padding: 15px;
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      input {
+        flex: 1;
+        padding: 12px 20px;
+        border: 2px solid transparent;
+        border-radius: var(--border-radius);
+        font-size: 16px;
+        background-color: rgba(255, 255, 255, 0.05);
+        color: var(--text-color);
+        transition: all 0.3s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      button {
+        padding: 12px 30px;
+        border: none;
+        border-radius: var(--border-radius);
+        background-color: var(--primary-color);
+        color: white;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      }
+
+      .status {
+        margin: 10px 0;
+        padding: 12px 25px;
+        border-radius: var(--border-radius);
+        background-color: var(--surface-color);
+        color: var(--text-secondary);
+        font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Icon styles */
+      #videoBtn::before,
+      #mainVideoBtn::before {
+        content: "🎥";
+      }
+
+      #audioBtn::before,
+      #mainAudioBtn::before {
+        content: "🎤";
+      }
+
+      #videoBtn.off::before,
+      #mainVideoBtn.off::before {
+        content: "�";
+      }
+
+      #audioBtn.off::before,
+      #mainAudioBtn.off::before {
+        content: "🔇";
+      }
+
+      /* Gradient overlay for videos */
+      .video-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100px;
+        background: linear-gradient(rgba(0, 0, 0, 0.7), transparent);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Video Chat</h1>
+
+    <div class="join-controls">
+      <input type="text" id="roomId" placeholder="Enter Room ID" />
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <div id="connectionStatus" class="status">Not connected</div>
+
+    <div class="video-container">
+      <div class="video-wrapper">
+        <div class="video-overlay"></div>
+        <div class="video-title">My Video</div>
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div class="video-controls">
+          <button
+            class="control-button"
+            id="videoBtn"
+            onclick="toggleVideo()"
+            title="Toggle Video"
+          ></button>
+          <button
+            class="control-button"
+            id="audioBtn"
+            onclick="toggleAudio()"
+            title="Toggle Audio"
+          ></button>
+        </div>
+      </div>
+      <div class="video-wrapper">
+        <div class="video-overlay"></div>
+        <div class="video-title">Remote Video</div>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+    </div>
+
+    <script src="js/webrtc.js"></script>
+  </body>
+</html>
