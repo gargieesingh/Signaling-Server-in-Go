@@ -1,3 +1,267 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC Video Chat</title>
+    <style>
+      :root {
+        --bg-color: #0f172a;
+        --surface-color: #1e293b;
+        --primary-color: #3b82f6;
+        --primary-hover: #2563eb;
+        --danger-color: #ef4444;
+        --danger-hover: #dc2626;
+        --text-color: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border-radius: 12px;
+      }
+
+      body {
+        font-family: "Segoe UI", -apple-system, system-ui, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: linear-gradient(135deg, var(--bg-color), #1e293b);
+        color: var(--text-color);
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 30px;
+        color: var(--text-color);
+        text-align: center;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .video-container {
+        display: flex;
+        gap: 30px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        max-width: 1200px;
+      }
+
+      .video-wrapper {
+        background-color: var(--surface-color);
+        padding: 20px;
+        border-radius: var(--border-radius);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        position: relative;
+        width: 480px;
+        transition: transform 0.3s ease;
+      }
+
+      .video-wrapper:hover {
+        transform: translateY(-5px);
+      }
+
+      video {
+        width: 100%;
+        height: 360px;
+        background-color: #000;
+        border-radius: calc(var(--border-radius) - 4px);
+        object-fit: cover;
+      }
+
+      .video-title {
+        position: absolute;
+        top: 15px;
+        left: 20px;
+        margin: 0;
+        color: var(--text-color);
+        font-size: 1.1rem;
+        font-weight: 500;
+        z-index: 10;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        background: rgba(0, 0, 0, 0.5);
+        padding: 8px 16px;
+        border-radius: 20px;
+      }
+
+      .video-controls {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 12px;
+        background: rgba(15, 23, 42, 0.85);
+        padding: 10px;
+        border-radius: 50px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+      }
+
+      .control-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        background-color: rgba(59, 130, 246, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      .control-button:hover {
+        background-color: rgba(37, 99, 235, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .control-button.off {
+        background-color: rgba(239, 68, 68, 0.9);
+      }
+
+      .control-button.off:hover {
+        background-color: rgba(220, 38, 38, 1);
+      }
+
+      .join-controls {
+        margin-bottom: 30px;
+        display: flex;
+        gap: 15px;
+        width: 100%;
+        max-width: 400px;
+        background: var(--surface-color);
+        padding: 15px;
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      input {
+        flex: 1;
+        padding: 12px 20px;
+        border: 2px solid transparent;
+        border-radius: var(--border-radius);
+        font-size: 16px;
+        background-color: rgba(255, 255, 255, 0.05);
+        color: var(--text-color);
+        transition: all 0.3s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      button {
+        padding: 12px 30px;
+        border: none;
+        border-radius: var(--border-radius);
+        background-color: var(--primary-color);
+        color: white;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      }
+
+      .status {
+        margin: 10px 0;
+        padding: 12px 25px;
+        border-radius: var(--border-radius);
+        background-color: var(--surface-color);
+        color: var(--text-secondary);
+        font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Icon styles using SVG backgrounds */
+      .control-button {
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 24px;
+      }
+
+      #videoBtn {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z'/%3E%3C/svg%3E");
+      }
+
+      #videoBtn.off {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M15 8v8H5V8h10m1-2H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4V7c0-.55-.45-1-1-1z'/%3E%3C/svg%3E");
+      }
+
+      #audioBtn {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V20h2v-2.08c.93-.13 1.81-.45 2.59-.92l4.14 4.14L21 19.87 4.27 3z'/%3E%3C/svg%3E");
+      }
+
+      #audioBtn.off {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z'/%3E%3C/svg%3E");
+      }
+
+      /* Gradient overlay for videos */
+      .video-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100px;
+        background: linear-gradient(rgba(0, 0, 0, 0.7), transparent);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Video Chat</h1>
+
+    <div class="join-controls">
+      <input type="text" id="roomId" placeholder="Enter Room ID" />
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <div id="connectionStatus" class="status">Not connected</div>
+
+    <div class="video-container">
+      <div class="video-wrapper">
+        <div class="video-overlay"></div>
+        <div class="video-title">My Video</div>
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div class="video-controls">
+          <button
+            class="control-button"
+            id="videoBtn"
+            onclick="toggleVideo()"
+            aria-label="Toggle Video"
+          ></button>
+          <button
+            class="control-button"
+            id="audioBtn"
+            onclick="toggleAudio()"
+            aria-label="Toggle Audio"
+          ></button>
+        </div>
+      </div>
+      <div class="video-wrapper">
+        <div class="video-overlay"></div>
+        <div class="video-title">Remote Video</div>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+    </div>
+
+    <script src="js/webrtc.js"></script>
+  </body>
+</html> -->
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -101,31 +365,34 @@
       }
 
       .control-button {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         border: none;
         cursor: pointer;
-        background-color: var(--primary-color);
-        color: white;
+        background-color: rgba(59, 130, 246, 0.9);
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s ease;
-        font-size: 20px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 24px;
       }
 
       .control-button:hover {
-        background-color: var(--primary-hover);
-        transform: scale(1.05);
+        background-color: rgba(37, 99, 235, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
       .control-button.off {
-        background-color: var(--danger-color);
+        background-color: rgba(239, 68, 68, 0.9);
       }
 
       .control-button.off:hover {
-        background-color: var(--danger-hover);
+        background-color: rgba(220, 38, 38, 1);
       }
 
       .join-controls {
@@ -185,25 +452,24 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
-      /* Icon styles */
-      #videoBtn::before,
-      #mainVideoBtn::before {
-        content: "🎥";
+      /* Video button icons - ON state (camera on) */
+      #videoBtn {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M15 8v8H5V8h10m1-2H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4V7c0-.55-.45-1-1-1z'/%3E%3C/svg%3E");
       }
 
-      #audioBtn::before,
-      #mainAudioBtn::before {
-        content: "🎤";
+      /* Video button icons - OFF state (camera off with slash) */
+      #videoBtn.off {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z'/%3E%3C/svg%3E");
       }
 
-      #videoBtn.off::before,
-      #mainVideoBtn.off::before {
-        content: "�";
+      /* Audio button icons - ON state (mic on) */
+      #audioBtn {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z'/%3E%3C/svg%3E");
       }
 
-      #audioBtn.off::before,
-      #mainAudioBtn.off::before {
-        content: "🔇";
+      /* Audio button icons - OFF state (mic off with slash) */
+      #audioBtn.off {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V20h2v-2.08c.93-.13 1.81-.45 2.59-.92l4.14 4.14L21 19.87 4.27 3z'/%3E%3C/svg%3E");
       }
 
       /* Gradient overlay for videos */
@@ -239,13 +505,13 @@
             class="control-button"
             id="videoBtn"
             onclick="toggleVideo()"
-            title="Toggle Video"
+            aria-label="Toggle Video"
           ></button>
           <button
             class="control-button"
             id="audioBtn"
             onclick="toggleAudio()"
-            title="Toggle Audio"
+            aria-label="Toggle Audio"
           ></button>
         </div>
       </div>
@@ -256,6 +522,379 @@
       </div>
     </div>
 
-    <script src="js/webrtc.js"></script>
+    <script>
+      let localStream;
+      let peerConnection;
+      let ws;
+      let roomId;
+      let peerId;
+      let isVideoEnabled = true;
+      let isAudioEnabled = true;
+
+      const servers = {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+          { urls: "stun:stun3.l.google.com:19302" },
+          { urls: "stun:stun4.l.google.com:19302" },
+        ],
+      };
+
+      const peerConfig = {
+        iceServers: servers.iceServers,
+        iceCandidatePoolSize: 10,
+      };
+
+      async function joinRoom() {
+        roomId = document.getElementById("roomId").value;
+        if (!roomId) {
+          alert("Please enter a room ID");
+          return;
+        }
+
+        peerId = Math.random().toString(36).substr(2, 9);
+
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          document.getElementById("localVideo").srcObject = localStream;
+
+          ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+          await new Promise((resolve) => {
+            ws.onopen = () => resolve();
+          });
+
+          setupWebSocket();
+          createPeerConnection();
+
+          ws.send(
+            JSON.stringify({
+              type: "join",
+              roomId: roomId,
+              peerId: peerId,
+            })
+          );
+
+          document.getElementById("connectionStatus").textContent =
+            "Connected to room: " + roomId;
+          updateMediaButtons();
+        } catch (err) {
+          console.error("Error in join room:", err);
+          alert("Error joining room: " + err.message);
+        }
+      }
+
+      function setupWebSocket() {
+        ws.onmessage = async function (event) {
+          const message = JSON.parse(event.data);
+          console.log("Received message:", message.type);
+
+          switch (message.type) {
+            case "peer-joined":
+              console.log("Peer joined:", message.peerId);
+              if (peerId > message.peerId) {
+                try {
+                  console.log(
+                    "Creating offer as initiator for peer:",
+                    message.peerId
+                  );
+                  if (
+                    !peerConnection ||
+                    peerConnection.connectionState === "closed"
+                  ) {
+                    createPeerConnection();
+                  }
+
+                  const offer = await peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true,
+                  });
+
+                  console.log("Setting local description:", offer.type);
+                  await peerConnection.setLocalDescription(offer);
+
+                  console.log("Sending offer to peer:", message.peerId);
+                  ws.send(
+                    JSON.stringify({
+                      type: "offer",
+                      roomId: roomId,
+                      peerId: message.peerId,
+                      payload: offer,
+                    })
+                  );
+                } catch (err) {
+                  console.error("Error creating offer:", err);
+                }
+              } else {
+                console.log("Waiting for offer from peer:", message.peerId);
+                if (!peerConnection) {
+                  createPeerConnection();
+                }
+              }
+              break;
+
+            case "offer":
+              await handleOffer(message);
+              break;
+
+            case "answer":
+              await handleAnswer(message);
+              break;
+
+            case "ice-candidate":
+              await handleIceCandidate(message);
+              break;
+
+            case "peer-left":
+              handlePeerLeft();
+              break;
+          }
+        };
+
+        ws.onerror = function (error) {
+          console.error("WebSocket Error:", error);
+        };
+
+        ws.onclose = function () {
+          console.log("WebSocket Connection Closed");
+        };
+      }
+
+      function createPeerConnection() {
+        if (peerConnection) {
+          peerConnection.close();
+        }
+
+        peerConnection = new RTCPeerConnection(peerConfig);
+        console.log("Created new peer connection");
+
+        localStream.getTracks().forEach((track) => {
+          const sender = peerConnection.addTrack(track, localStream);
+          console.log(
+            "Added local track:",
+            track.kind,
+            "with sender:",
+            sender.toString()
+          );
+        });
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            console.log("New ICE candidate:", event.candidate.type);
+            ws.send(
+              JSON.stringify({
+                type: "ice-candidate",
+                roomId: roomId,
+                peerId: peerId,
+                payload: event.candidate,
+              })
+            );
+          } else {
+            console.log("All ICE candidates gathered");
+          }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+          const state = peerConnection.connectionState;
+          console.log("Connection state changed:", state);
+          document.getElementById("connectionStatus").textContent =
+            "Connection state: " + state;
+
+          if (state === "failed") {
+            console.log("Connection failed, restarting peer connection");
+            createPeerConnection();
+          }
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+          const state = peerConnection.iceConnectionState;
+          console.log("ICE connection state:", state);
+
+          if (state === "disconnected" || state === "failed") {
+            console.log("ICE connection failed, checking tracks");
+            checkAndRestartTracks();
+          }
+        };
+
+        peerConnection.onsignalingstatechange = () => {
+          console.log("Signaling state:", peerConnection.signalingState);
+        };
+
+        peerConnection.ontrack = (event) => {
+          console.log(
+            "Received remote track:",
+            event.track.kind,
+            "streams:",
+            event.streams.length
+          );
+
+          const remoteVideo = document.getElementById("remoteVideo");
+          if (!remoteVideo.srcObject) {
+            remoteVideo.srcObject = new MediaStream();
+          }
+
+          const stream = remoteVideo.srcObject;
+          if (!stream.getTracks().some((t) => t.id === event.track.id)) {
+            stream.addTrack(event.track);
+            console.log("Added track to remote stream:", event.track.kind);
+          }
+
+          event.track.onmute = () =>
+            console.log("Remote track muted:", event.track.kind);
+          event.track.onunmute = () =>
+            console.log("Remote track unmuted:", event.track.kind);
+          event.track.onended = () =>
+            console.log("Remote track ended:", event.track.kind);
+        };
+      }
+
+      async function handleOffer(message) {
+        try {
+          console.log("Handling offer from peer:", message.peerId);
+
+          if (!peerConnection || peerConnection.signalingState === "closed") {
+            console.log("Creating new peer connection for offer");
+            createPeerConnection();
+          }
+
+          if (peerConnection.signalingState !== "stable") {
+            console.log("Signaling state not stable, resetting connection");
+            await Promise.all([
+              peerConnection.setLocalDescription({ type: "rollback" }),
+              peerConnection.setRemoteDescription(
+                new RTCSessionDescription(message.payload)
+              ),
+            ]);
+          } else {
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(message.payload)
+            );
+          }
+
+          console.log("Creating answer");
+          const answer = await peerConnection.createAnswer();
+          console.log("Setting local description (answer)");
+          await peerConnection.setLocalDescription(answer);
+
+          console.log("Sending answer to peer:", message.peerId);
+          ws.send(
+            JSON.stringify({
+              type: "answer",
+              roomId: roomId,
+              peerId: message.peerId,
+              payload: answer,
+            })
+          );
+        } catch (err) {
+          console.error("Error handling offer:", err);
+        }
+      }
+
+      async function handleAnswer(message) {
+        try {
+          console.log("Handling answer from peer:", message.peerId);
+          if (peerConnection.signalingState === "have-local-offer") {
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(message.payload)
+            );
+            console.log("Set remote description from answer successfully");
+          } else {
+            console.warn(
+              "Received answer but peer connection is in state:",
+              peerConnection.signalingState
+            );
+          }
+        } catch (err) {
+          console.error("Error handling answer:", err);
+        }
+      }
+
+      async function handleIceCandidate(message) {
+        if (peerConnection && peerConnection.remoteDescription) {
+          try {
+            console.log("Adding ICE candidate from peer:", message.peerId);
+            await peerConnection.addIceCandidate(
+              new RTCIceCandidate(message.payload)
+            );
+            console.log("Added ICE candidate successfully");
+          } catch (e) {
+            console.error("Error adding received ice candidate:", e);
+          }
+        } else {
+          console.warn("Received ICE candidate but peer connection is not ready");
+        }
+      }
+
+      function handlePeerLeft() {
+        document.getElementById("remoteVideo").srcObject = null;
+        if (peerConnection) {
+          peerConnection.close();
+          peerConnection = null;
+        }
+      }
+
+      function toggleVideo() {
+        if (localStream) {
+          isVideoEnabled = !isVideoEnabled;
+          localStream.getVideoTracks().forEach((track) => {
+            track.enabled = isVideoEnabled;
+          });
+          updateMediaButtons();
+        }
+      }
+
+      function toggleAudio() {
+        if (localStream) {
+          isAudioEnabled = !isAudioEnabled;
+          localStream.getAudioTracks().forEach((track) => {
+            track.enabled = isAudioEnabled;
+          });
+          updateMediaButtons();
+        }
+      }
+
+      function updateMediaButtons() {
+        const videoBtn = document.getElementById("videoBtn");
+        const audioBtn = document.getElementById("audioBtn");
+
+        // Toggle the 'off' class to change icons
+        if (videoBtn) {
+          videoBtn.classList.toggle("off", !isVideoEnabled);
+          videoBtn.setAttribute("aria-label", isVideoEnabled ? "Turn Off Video" : "Turn On Video");
+        }
+
+        if (audioBtn) {
+          audioBtn.classList.toggle("off", !isAudioEnabled);
+          audioBtn.setAttribute("aria-label", isAudioEnabled ? "Mute Audio" : "Unmute Audio");
+        }
+      }
+
+      function checkAndRestartTracks() {
+        const remoteVideo = document.getElementById("remoteVideo");
+        const stream = remoteVideo.srcObject;
+
+        if (stream) {
+          const videoTrack = stream.getVideoTracks()[0];
+          const audioTrack = stream.getAudioTracks()[0];
+
+          console.log("Video track state:", videoTrack?.readyState);
+          console.log("Audio track state:", audioTrack?.readyState);
+
+          if (
+            videoTrack?.readyState === "ended" ||
+            audioTrack?.readyState === "ended"
+          ) {
+            console.log("Tracks ended, negotiating new connection");
+            if (peerConnection && peerConnection.connectionState === "connected") {
+              peerConnection.restartIce();
+            }
+          }
+        }
+      }
+    </script>
   </body>
 </html>
