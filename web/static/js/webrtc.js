@@ -41,7 +41,8 @@ async function joinRoom() {
     document.getElementById("localVideo").srcObject = localStream;
 
     // Initialize WebSocket connection after media is ready
-    ws = new WebSocket(`ws://${window.location.host}/ws`);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     // Wait for WebSocket connection to be ready
     await new Promise((resolve) => {

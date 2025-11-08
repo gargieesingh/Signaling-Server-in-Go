@@ -1,18 +1,19 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
+	"os"
 	"webrtc-engine/internal/signaling"
 )
 
 func main() {
-	defaultPort := 8080
-	port := flag.Int("port", defaultPort, "port to run the server on")
-	flag.Parse()
+	// Get port from environment variable or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Default port
+	}
 
 	// Create new signaling server
 	signalingServer := signaling.NewServer()
@@ -23,27 +24,15 @@ func main() {
 	// WebSocket endpoint
 	http.HandleFunc("/ws", signalingServer.HandleWebSocket)
 
-	// Try ports until we find an available one
-	var err error
-	currentPort := *port
-	for attempts := 0; attempts < 10; attempts++ {
-		addr := fmt.Sprintf(":%d", currentPort)
-		log.Printf("Attempting to start server on port %d", currentPort)
-		
-		server := &http.Server{
-			Addr:    addr,
-			Handler: nil,
-		}
-		
-		err = server.ListenAndServe()
-		if err != nil && strings.Contains(err.Error(), "bind: address already in use") {
-			currentPort++
-			continue
-		}
-		break
+	addr := fmt.Sprintf(":%s", port)
+	log.Printf("Starting server on port %s", port)
+	
+	server := &http.Server{
+		Addr:    addr,
+		Handler: nil,
 	}
 	
-	if err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal("Failed to start server: ", err)
 	}
 }
