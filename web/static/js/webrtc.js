@@ -29,15 +29,66 @@ async function joinRoom() {
     return;
   }
 
+  // Check browser support for WebRTC
+  if (!window.RTCPeerConnection) {
+    alert("Your browser doesn't support WebRTC. Please use a modern browser like Chrome, Firefox, or Edge.");
+    return;
+  }
+
+  // Check HTTPS in production
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (window.location.protocol !== 'https:') {
+      alert("For security reasons, this application requires HTTPS in production. Please use an HTTPS connection.");
+      window.location.href = 'https://' + window.location.host + window.location.pathname;
+      return;
+    }
+  }
+
+  // Update status to show we're connecting
+  document.getElementById("connectionStatus").textContent = "Connecting... Please allow camera/microphone access if prompted";
+
   // Generate a random peer ID
   peerId = Math.random().toString(36).substr(2, 9);
 
   try {
-    // Get local media stream first
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
+    // First check if media devices are available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Your browser doesn't support media devices");
+    }
+
+    // Try to get both video and audio
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+    } catch (mediaError) {
+      // If full access fails, try audio only
+      console.log("Failed to get video and audio, trying audio only:", mediaError);
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true,
+        });
+        alert("Video access was denied. Continuing with audio only.");
+      } catch (audioError) {
+        // If audio only fails, try video only
+        console.log("Failed to get audio, trying video only:", audioError);
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+          alert("Audio access was denied. Continuing with video only.");
+        } catch (videoError) {
+          // If everything fails, throw a user-friendly error
+          throw new Error("Unable to access camera or microphone. Please make sure:\n\n" +
+            "1. Your camera and microphone are properly connected\n" +
+            "2. You have given permission to use them\n" +
+            "3. No other application is using them");
+        }
+      }
+    }
     document.getElementById("localVideo").srcObject = localStream;
 
     // Initialize WebSocket connection after media is ready
@@ -70,7 +121,20 @@ async function joinRoom() {
     updateMediaButtons();
   } catch (err) {
     console.error("Error in join room:", err);
-    alert("Error joining room: " + err.message);
+    
+    // Update status with error
+    const statusEl = document.getElementById("connectionStatus");
+    statusEl.style.color = '#ef4444';  // Red color for error
+    
+    if (err.name === 'NotAllowedError') {
+      statusEl.textContent = "Permission denied. Please allow camera/microphone access and try again.";
+    } else if (err.name === 'NotFoundError') {
+      statusEl.textContent = "Camera or microphone not found. Please check your devices and try again.";
+    } else if (err.name === 'NotReadableError') {
+      statusEl.textContent = "Unable to access your camera/microphone. They might be in use by another application.";
+    } else {
+      statusEl.textContent = "Error: " + err.message;
+    }
   }
 }
 
@@ -377,6 +441,40 @@ function updateMediaButtons() {
     btn.classList.toggle("off", !isAudioEnabled);
     btn.title = isAudioEnabled ? "Mute Audio" : "Unmute Audio";
   });
+}
+
+// Function to check device permissions
+async function checkDevicePermissions() {
+  try {
+    // Check if the browser supports the permissions API
+    if (navigator.permissions && navigator.permissions.query) {
+      // Check camera permission
+      const cameraResult = await navigator.permissions.query({ name: 'camera' });
+      if (cameraResult.state === 'denied') {
+        throw new Error('Camera access is blocked. Please allow camera access in your browser settings.');
+      }
+
+      // Check microphone permission
+      const micResult = await navigator.permissions.query({ name: 'microphone' });
+      if (micResult.state === 'denied') {
+        throw new Error('Microphone access is blocked. Please allow microphone access in your browser settings.');
+      }
+    }
+
+    // List available devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const hasVideo = devices.some(device => device.kind === 'videoinput');
+    const hasAudio = devices.some(device => device.kind === 'audioinput');
+
+    if (!hasVideo && !hasAudio) {
+      throw new Error('No camera or microphone found. Please connect a device and try again.');
+    }
+
+    return { hasVideo, hasAudio };
+  } catch (error) {
+    console.error('Error checking permissions:', error);
+    throw error;
+  }
 }
 
 function checkAndRestartTracks() {
