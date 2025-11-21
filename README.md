@@ -168,11 +168,3 @@ The implementation includes error handling for:
 8. Better error handling and recovery
 9. Network quality indicators
 10. Bandwidth adaptation
-
-## Contributing
-
-Feel free to submit issues, fork the repository, and create pull requests for any improvements.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
