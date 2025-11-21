@@ -1,0 +1,807 @@
+<!-- <!DOCTYPE html>
+<html>
+    SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+    SPDX-License-Identifier: MIT
+  -->
+
+  <!-- <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <h3> Local Video </h3>
+    <video id="localVideo" width="160" height="120" autoplay muted></video> <br />
+
+    <h3> Remote Video </h3>
+    <div id="remoteVideos"></div> <br />
+
+    <h3> Logs </h3>
+    <div id="logs"></div>
+
+
+  </body>
+
+  <script>
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(stream => {
+      let pc = new RTCPeerConnection()
+      pc.ontrack = function (event) {
+        if (event.track.kind === 'audio') {
+          return
+        }
+
+        let el = document.createElement(event.track.kind)
+        el.srcObject = event.streams[0]
+        el.autoplay = true
+        el.controls = true
+        document.getElementById('remoteVideos').appendChild(el)
+
+        event.track.onmute = function(event) {
+          el.play()
+        }
+
+        event.streams[0].onremovetrack = ({track}) => {
+          if (el.parentNode) {
+            el.parentNode.removeChild(el)
+          }
+        }
+      }
+
+      document.getElementById('localVideo').srcObject = stream
+      stream.getTracks().forEach(track => pc.addTrack(track, stream))
+
+      let ws = new WebSocket("{{.}}")
+      pc.onicecandidate = e => {
+        if (!e.candidate) {
+          return
+        }
+
+        ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}))
+      }
+
+      ws.onclose = function(evt) {
+        window.alert("Websocket has closed")
+      }
+
+      ws.onmessage = function(evt) {
+        let msg = JSON.parse(evt.data)
+        if (!msg) {
+          return console.log('failed to parse msg')
+        }
+
+        switch (msg.event) {
+          case 'offer':
+            let offer = JSON.parse(msg.data)
+            if (!offer) {
+              return console.log('failed to parse answer')
+            }
+            pc.setRemoteDescription(offer)
+            pc.createAnswer().then(answer => {
+              pc.setLocalDescription(answer)
+              ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}))
+            })
+            return
+
+          case 'candidate':
+            let candidate = JSON.parse(msg.data)
+            if (!candidate) {
+              return console.log('failed to parse candidate')
+            }
+
+            pc.addIceCandidate(candidate)
+        }
+      }
+
+      ws.onerror = function(evt) {
+        console.log("ERROR: " + evt.data)
+      }
+    }).catch(window.alert)
+  </script>
+</html> -->
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #041048 0%, #2c0652 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      h3 {
+        color: white;
+        margin-bottom: 15px;
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .video-container {
+        position: relative;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .local-section {
+        margin-bottom: 30px;
+      }
+
+      .local-video-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+
+      #localVideo {
+        width: 320px;
+        height: 240px;
+        border-radius: 12px;
+        display: block;
+        background: #000;
+      }
+
+      .controls {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 12px;
+        z-index: 10;
+      }
+
+      .control-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+      }
+
+      .control-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
+      }
+
+      .control-btn.active {
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .control-btn.muted {
+        background: rgba(239, 68, 68, 0.9);
+      }
+
+      .control-btn svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+      }
+
+      .control-btn.active svg {
+        fill: #667eea;
+      }
+
+      #remoteVideos {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      #remoteVideos.grid-3plus {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .remote-video-wrapper {
+        position: relative;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      .remote-video-wrapper video {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4/3;
+        display: block;
+        background: #000;
+      }
+
+      /* #logs {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      .log-entry {
+        margin-bottom: 8px;
+        opacity: 0.9;
+      } */
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="local-section">
+        <h3>Local Video</h3>
+        <div class="local-video-wrapper">
+          <video id="localVideo" autoplay muted></video>
+          <div class="controls">
+            <button class="control-btn active" id="toggleVideo" title="Toggle Video">
+              <svg id="videoOnIcon" viewBox="0 0 24 24">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+              <svg id="videoOffIcon" viewBox="0 0 24 24" style="display:none;">
+                <path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/>
+              </svg>
+            </button>
+            <button class="control-btn active" id="toggleAudio" title="Toggle Audio">
+              <svg id="micOnIcon" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+              </svg>
+              <svg id="micOffIcon" viewBox="0 0 24 24" style="display:none;">
+                <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>Remote Videos</h3>
+        <div id="remoteVideos"></div>
+      </div>
+
+      <div>
+        <h3>Logs</h3>
+        <div id="logs"></div>
+      </div>
+    </div>
+
+    <script>
+      let localStream;
+      let videoEnabled = true;
+      let audioEnabled = true;
+
+      const toggleVideoBtn = document.getElementById('toggleVideo');
+      const toggleAudioBtn = document.getElementById('toggleAudio');
+      const videoOnIcon = document.getElementById('videoOnIcon');
+      const videoOffIcon = document.getElementById('videoOffIcon');
+      const micOnIcon = document.getElementById('micOnIcon');
+      const micOffIcon = document.getElementById('micOffIcon');
+      const remoteVideosContainer = document.getElementById('remoteVideos');
+
+      toggleVideoBtn.addEventListener('click', () => {
+        if (localStream) {
+          videoEnabled = !videoEnabled;
+          localStream.getVideoTracks().forEach(track => {
+            track.enabled = videoEnabled;
+          });
+          
+          if (videoEnabled) {
+            toggleVideoBtn.classList.add('active');
+            toggleVideoBtn.classList.remove('muted');
+            videoOnIcon.style.display = 'block';
+            videoOffIcon.style.display = 'none';
+          } else {
+            toggleVideoBtn.classList.remove('active');
+            toggleVideoBtn.classList.add('muted');
+            videoOnIcon.style.display = 'none';
+            videoOffIcon.style.display = 'block';
+          }
+        }
+      });
+
+      toggleAudioBtn.addEventListener('click', () => {
+        if (localStream) {
+          audioEnabled = !audioEnabled;
+          localStream.getAudioTracks().forEach(track => {
+            track.enabled = audioEnabled;
+          });
+          
+          if (audioEnabled) {
+            toggleAudioBtn.classList.add('active');
+            toggleAudioBtn.classList.remove('muted');
+            micOnIcon.style.display = 'block';
+            micOffIcon.style.display = 'none';
+          } else {
+            toggleAudioBtn.classList.remove('active');
+            toggleAudioBtn.classList.add('muted');
+            micOnIcon.style.display = 'none';
+            micOffIcon.style.display = 'block';
+          }
+        }
+      });
+
+      function updateGridLayout() {
+        const remoteVideoCount = remoteVideosContainer.children.length;
+        if (remoteVideoCount >= 3) {
+          remoteVideosContainer.classList.add('grid-3plus');
+        } else {
+          remoteVideosContainer.classList.remove('grid-3plus');
+        }
+      }
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        localStream = stream;
+        let pc = new RTCPeerConnection()
+        pc.ontrack = function (event) {
+          if (event.track.kind === 'audio') {
+            return
+          }
+
+          let wrapper = document.createElement('div');
+          wrapper.className = 'remote-video-wrapper';
+          
+          let el = document.createElement(event.track.kind)
+          el.srcObject = event.streams[0]
+          el.autoplay = true
+          el.controls = true
+          
+          wrapper.appendChild(el);
+          document.getElementById('remoteVideos').appendChild(wrapper);
+          updateGridLayout();
+
+          event.track.onmute = function(event) {
+            el.play()
+          }
+
+          event.streams[0].onremovetrack = ({track}) => {
+            if (wrapper.parentNode) {
+              wrapper.parentNode.removeChild(wrapper)
+              updateGridLayout();
+            }
+          }
+        }
+
+        document.getElementById('localVideo').srcObject = stream
+        stream.getTracks().forEach(track => pc.addTrack(track, stream))
+
+        let ws = new WebSocket("{{.}}")
+        pc.onicecandidate = e => {
+          if (!e.candidate) {
+            return
+          }
+
+          ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}))
+        }
+
+        ws.onclose = function(evt) {
+          window.alert("Websocket has closed")
+        }
+
+        ws.onmessage = function(evt) {
+          let msg = JSON.parse(evt.data)
+          if (!msg) {
+            return console.log('failed to parse msg')
+          }
+
+          switch (msg.event) {
+            case 'offer':
+              let offer = JSON.parse(msg.data)
+              if (!offer) {
+                return console.log('failed to parse answer')
+              }
+              pc.setRemoteDescription(offer)
+              pc.createAnswer().then(answer => {
+                pc.setLocalDescription(answer)
+                ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}))
+              })
+              return
+
+            case 'candidate':
+              let candidate = JSON.parse(msg.data)
+              if (!candidate) {
+                return console.log('failed to parse candidate')
+              }
+
+              pc.addIceCandidate(candidate)
+          }
+        }
+
+        ws.onerror = function(evt) {
+          console.log("ERROR: " + evt.data)
+        }
+      }).catch(window.alert)
+    </script>
+  </body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      h3 {
+        color: white;
+        margin-bottom: 15px;
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .video-container {
+        position: relative;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .local-section {
+        margin-bottom: 30px;
+      }
+
+      .local-video-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+
+      #localVideo {
+        width: 320px;
+        height: 240px;
+        border-radius: 12px;
+        display: block;
+        background: #000;
+      }
+
+      .controls {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 12px;
+        z-index: 10;
+      }
+
+      .control-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+      }
+
+      .control-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
+      }
+
+      .control-btn.active {
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .control-btn.muted {
+        background: rgba(239, 68, 68, 0.9);
+      }
+
+      .control-btn svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+      }
+
+      .control-btn.active svg {
+        fill: #667eea;
+      }
+
+      #remoteVideos {
+        display: grid;
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(1):last-child) {
+        grid-template-columns: 1fr;
+        max-width: 640px;
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(2)) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(3)) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(4)) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(5)) {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(6)) {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      #remoteVideos:has(.remote-video-wrapper:nth-child(7)) {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      @media (max-width: 768px) {
+        #remoteVideos {
+          grid-template-columns: 1fr !important;
+        }
+      }
+
+      .remote-video-wrapper {
+        position: relative;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      .remote-video-wrapper video {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4/3;
+        display: block;
+        background: #000;
+      }
+
+      /* #logs {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      .log-entry {
+        margin-bottom: 8px;
+        opacity: 0.9;
+      } */
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="local-section">
+        <h3>Local Video</h3>
+        <div class="local-video-wrapper">
+          <video id="localVideo" autoplay muted></video>
+          <div class="controls">
+            <button class="control-btn active" id="toggleVideo" title="Toggle Video">
+              <svg id="videoOnIcon" viewBox="0 0 24 24">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+              <svg id="videoOffIcon" viewBox="0 0 24 24" style="display:none;">
+                <path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/>
+              </svg>
+            </button>
+            <button class="control-btn active" id="toggleAudio" title="Toggle Audio">
+              <svg id="micOnIcon" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+              </svg>
+              <svg id="micOffIcon" viewBox="0 0 24 24" style="display:none;">
+                <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>Remote Videos</h3>
+        <div id="remoteVideos"></div>
+      </div>
+
+      <div>
+        <h3>Logs</h3>
+        <div id="logs"></div>
+      </div>
+    </div>
+
+    <script>
+      let localStream;
+      let videoEnabled = true;
+      let audioEnabled = true;
+
+      const toggleVideoBtn = document.getElementById('toggleVideo');
+      const toggleAudioBtn = document.getElementById('toggleAudio');
+      const videoOnIcon = document.getElementById('videoOnIcon');
+      const videoOffIcon = document.getElementById('videoOffIcon');
+      const micOnIcon = document.getElementById('micOnIcon');
+      const micOffIcon = document.getElementById('micOffIcon');
+      const remoteVideosContainer = document.getElementById('remoteVideos');
+
+      toggleVideoBtn.addEventListener('click', () => {
+        if (localStream) {
+          videoEnabled = !videoEnabled;
+          localStream.getVideoTracks().forEach(track => {
+            track.enabled = videoEnabled;
+          });
+          
+          if (videoEnabled) {
+            toggleVideoBtn.classList.add('active');
+            toggleVideoBtn.classList.remove('muted');
+            videoOnIcon.style.display = 'block';
+            videoOffIcon.style.display = 'none';
+          } else {
+            toggleVideoBtn.classList.remove('active');
+            toggleVideoBtn.classList.add('muted');
+            videoOnIcon.style.display = 'none';
+            videoOffIcon.style.display = 'block';
+          }
+        }
+      });
+
+      toggleAudioBtn.addEventListener('click', () => {
+        if (localStream) {
+          audioEnabled = !audioEnabled;
+          localStream.getAudioTracks().forEach(track => {
+            track.enabled = audioEnabled;
+          });
+          
+          if (audioEnabled) {
+            toggleAudioBtn.classList.add('active');
+            toggleAudioBtn.classList.remove('muted');
+            micOnIcon.style.display = 'block';
+            micOffIcon.style.display = 'none';
+          } else {
+            toggleAudioBtn.classList.remove('active');
+            toggleAudioBtn.classList.add('muted');
+            micOnIcon.style.display = 'none';
+            micOffIcon.style.display = 'block';
+          }
+        }
+      });
+
+      function updateGridLayout() {
+        // Grid layout is now handled by CSS :has() selector
+      }
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        localStream = stream;
+        let pc = new RTCPeerConnection()
+        pc.ontrack = function (event) {
+          if (event.track.kind === 'audio') {
+            return
+          }
+
+          let wrapper = document.createElement('div');
+          wrapper.className = 'remote-video-wrapper';
+          
+          let el = document.createElement(event.track.kind)
+          el.srcObject = event.streams[0]
+          el.autoplay = true
+          el.controls = true
+          
+          wrapper.appendChild(el);
+          document.getElementById('remoteVideos').appendChild(wrapper);
+          updateGridLayout();
+
+          event.track.onmute = function(event) {
+            el.play()
+          }
+
+          event.streams[0].onremovetrack = ({track}) => {
+            if (wrapper.parentNode) {
+              wrapper.parentNode.removeChild(wrapper)
+              updateGridLayout();
+            }
+          }
+        }
+
+        document.getElementById('localVideo').srcObject = stream
+        stream.getTracks().forEach(track => pc.addTrack(track, stream))
+
+        let ws = new WebSocket("{{.}}")
+        pc.onicecandidate = e => {
+          if (!e.candidate) {
+            return
+          }
+
+          ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}))
+        }
+
+        ws.onclose = function(evt) {
+          window.alert("Websocket has closed")
+        }
+
+        ws.onmessage = function(evt) {
+          let msg = JSON.parse(evt.data)
+          if (!msg) {
+            return console.log('failed to parse msg')
+          }
+
+          switch (msg.event) {
+            case 'offer':
+              let offer = JSON.parse(msg.data)
+              if (!offer) {
+                return console.log('failed to parse answer')
+              }
+              pc.setRemoteDescription(offer)
+              pc.createAnswer().then(answer => {
+                pc.setLocalDescription(answer)
+                ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}))
+              })
+              return
+
+            case 'candidate':
+              let candidate = JSON.parse(msg.data)
+              if (!candidate) {
+                return console.log('failed to parse candidate')
+              }
+
+              pc.addIceCandidate(candidate)
+          }
+        }
+
+        ws.onerror = function(evt) {
+          console.log("ERROR: " + evt.data)
+        }
+      }).catch(window.alert)
+    </script>
+  </body>
+</html>
