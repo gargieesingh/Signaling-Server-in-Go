@@ -12,7 +12,7 @@ func main() {
 	// Get port from environment variable or use default
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // Default port
+		port = "5050" // Default port
 	}
 
 	// Create new signaling server
@@ -36,3 +36,5 @@ func main() {
 		log.Fatal("Failed to start server: ", err)
 	}
 }
+
+// run the server with: go run cmd/server/main.go
